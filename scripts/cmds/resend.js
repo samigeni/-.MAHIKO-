@@ -1,4 +1,4 @@
-heremodule.exports = {
+module.exports = {
   config: {
     name: "resend",
     version: "Rômeo",
