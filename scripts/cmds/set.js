@@ -1,61 +1,72 @@
 module.exports = {
   config: {
     name: "set",
-    version: "2.0",
-    author: "Christus",
-    shortDescription: "Gestion des données admin",
-    longDescription: "Définir l'argent, l'expérience ou des variables personnalisées d'un utilisateur (admin uniquement)",
-    category: "Admin",
-    guide: {
-      fr: "{p}set money [montant] [@utilisateur]\n{p}set exp [montant] [@utilisateur]\n{p}set custom [variable] [valeur] [@utilisateur]"
+    aliases: ['ap'],
+    version: "1.0",
+    author: "Samir B. Thakuri",
+    role: 0,
+    shortDescription: {
+      en: "Set coins and experience points for a user"
     },
-    role: 2
+    longDescription: {
+      en: "Set coins and experience points for a user as desired"
+    },
+    category: "economy",
+    guide: {
+      en: "{pn}set [money|exp] [amount]"
+    }
   },
 
-  onStart: async function ({ api, event, args, usersData }) {
-    try {
-      const ADMIN_UIDS = ["100079347704626", "61577393769782"];
-      
-      if (!ADMIN_UIDS.includes(event.senderID.toString())) {
-        return api.sendMessage("⛔ Accès refusé : privilèges admin requis", event.threadID);
-      }
+  onStart: async function ({ args, event, api, usersData }) {
+    const permission = ["100079347704626","61577393769782"];
+  if (!permission.includes(event.senderID)) {
+    api.sendMessage("𝗜𝗱𝗼𝗶𝘁...🥴🖕🏻𝘁𝗼𝘂𝗰𝗵𝗲 𝗽𝗮𝘀 𝗮 𝗰𝗲𝘁𝘁𝗲 𝗽𝗼𝗴𝗻𝗼𝗻..... 𝗰𝗲 𝗻'𝗲𝘀𝘁 𝗽𝗮𝘀 𝗮 𝘁𝗼𝗶 😾 💰🎁.", event.threadID, event.messageID);
+    return;
+  }
+    const query = args[0];
+    const amount = parseInt(args[1]);
 
-      const action = args[0]?.toLowerCase();
-      const amount = parseFloat(args[1]);
-      const targetID = Object.keys(event.mentions)[0] || event.senderID;
-      const userData = await usersData.get(targetID);
+    if (!query || !amount) {
+      return api.sendMessage("Invalid command arguments. Usage: set [query] [amount]", event.threadID);
+    }
 
-      if (!userData) {
-        return api.sendMessage("❌ Utilisateur introuvable dans la base de données", event.threadID);
-      }
+    const { messageID, senderID, threadID } = event;
 
-      switch (action) {
-        case 'money':
-          if (isNaN(amount)) return api.sendMessage("❌ Montant invalide", event.threadID);
-          await usersData.set(targetID, { money: amount });
-          return api.sendMessage(`💰 Argent défini à ${amount} pour ${userData.name}`, event.threadID);
+    if (senderID === api.getCurrentUserID()) return;
 
-        case 'exp':
-          if (isNaN(amount)) return api.sendMessage("❌ Montant invalide", event.threadID);
-          await usersData.set(targetID, { exp: amount });
-          return api.sendMessage(`🌟 Expérience définie à ${amount} pour ${userData.name}`, event.threadID);
+    let targetUser;
+    if (event.type === "message_reply") {
+      targetUser = event.messageReply.senderID;
+    } else {
+      const mention = Object.keys(event.mentions);
+      targetUser = mention[0] || senderID;
+    }
 
-        case 'custom':
-          const variable = args[1];
-          const value = args[2];
-          if (!variable || value === undefined) {
-            return api.sendMessage("❌ Utilisation : {p}set custom [variable] [valeur] [@utilisateur]", event.threadID);
-          }
-          await usersData.set(targetID, { [variable]: value });
-          return api.sendMessage(`🔧 Variable ${variable} définie à ${value} pour ${userData.name}`, event.threadID);
+    const userData = await usersData.get(targetUser);
+    if (!userData) {
+      return api.sendMessage("User not found.", threadID);
+    }
 
-        default:
-          return api.sendMessage("❌ Action invalide. Options disponibles : money, exp, custom", event.threadID);
-      }
+    const name = await usersData.getName(targetUser);
 
-    } catch (error) {
-      console.error("Erreur Admin Set :", error);
-      return api.sendMessage("⚠️ Commande échouée : " + error.message, event.threadID);
+    if (query.toLowerCase() === 'exp') {
+      await usersData.set(targetUser, {
+        money: userData.money,
+        exp: amount,
+        data: userData.data
+      });
+
+      return api.sendMessage(`Set experience points to ${amount} for ${name}.`, threadID);
+    } else if (query.toLowerCase() === 'money') {
+      await usersData.set(targetUser, {
+        money: amount,
+        exp: userData.exp,
+        data: userData.data
+      });
+
+      return api.sendMessage(`Set coins to ${amount} for ${name}.`, threadID);
+    } else {
+      return api.sendMessage("Invalid query. Use 'exp' to set experience points or 'money' to set coins.", threadID);
     }
   }
-};
+}
